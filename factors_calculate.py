@@ -103,13 +103,14 @@ def rolling_func(n, data_all, func, rolling_column, out_name):
     for stock in stocks:
         data_raw = data_all[rolling_column][data_all['code'] == stock].sort_index()
         data_ = data_raw.values
+        index += list(data_raw.index)
+        code += [stock for i in range(len(data_raw))]
         if len(data_) < n:
+            out_all += [np.nan for i in range(len(data_raw))]
             continue
         windowed_data = to_rolling_n(n, data_)
         out_data = list(np.repeat(np.nan, n-1)) + list(func(windowed_data, axis=1))
         out_all += out_data
-        index += list(data_raw.index)
-        code += [stock for i in range(len(out_data))]
     out_all_df = pd.DataFrame([code, out_all], columns=index, index=['code', out_name]).T
     return out_all_df
 
@@ -340,12 +341,12 @@ def get_accruals_1():
 #       1. 12month 换手率：过去250日换手率平均值（换手率 = 交易量/发行在外股份数， 发行在外股份数 = 净利润/基本每股收益）
 #       2. extra_turnover_20d: 过去20日平均换手率 / 过去250日平均换手率
 def get_turnover(factor):
-    # select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` <= 10 and code != 0'
-    # select_sql_shares = 'SELECT `date`, `code`, `B002000000`/`B003000000` ' \
-    #                     'FROM `report_profit_daily` WHERE `code` <= 10 and code != 0'
-    select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` != 0'
+    select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` <= 602010 and code != 0'
     select_sql_shares = 'SELECT `date`, `code`, `B002000000`/`B003000000` ' \
-                        'FROM `report_profit_daily` WHERE `code` != 0'
+                        'FROM `report_profit_daily` WHERE `code` >= 602010 and code != 0'
+    # select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` != 0'
+    # select_sql_shares = 'SELECT `date`, `code`, `B002000000`/`B003000000` ' \
+    #                     'FROM `report_profit_daily` WHERE `code` != 0'
     volume = select_data(select_sql_volume).reset_index().set_index(['date', 'code']).iloc[:, 1:]
     shares = select_data(select_sql_shares).reset_index().set_index(['date', 'code']).iloc[:, 1:]
     print('get volume and shares')
@@ -376,5 +377,5 @@ def get_turnover(factor):
 if __name__ == '__main__':
     factor_path = config.get('PATH', 'data_pt') + '/factors'
     # get_bs_related('all')
-    # get_turnover('all')
+    get_turnover('extra_to_20d')
     get_accruals_1()
