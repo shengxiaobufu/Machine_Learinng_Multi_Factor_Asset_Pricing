@@ -12,7 +12,7 @@ def fullfill_monthly(start_year, end_year, data_):
             all_time.append(date(y, m, 1))
 
     all_time_df = pd.DataFrame([], index=all_time)
-    data_ = pd.concat([all_time_df, data_], axis=1).fillna(method='pad')
+    data_ = pd.concat([all_time_df, data_], axis=1)
     return data_
 
 

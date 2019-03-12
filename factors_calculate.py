@@ -324,12 +324,16 @@ def get_accruals_1():
     print('get accural data')
     bs_related_growth = vs_last_year(bs_related,  column='cl_minus_std_tp', out_column='bs_rela_growth',
                                      type_='growth_amount')
+    del bs_related
     bs_related_growth = bs_related_growth.reset_index().set_index(['index', 'code'])
     dep = dep.reset_index().set_index(['index', 'code'])
     b_d = pd.merge(bs_related_growth, dep, left_index=True, right_index=True, how='outer')
+    del bs_related_growth
+    del dep
     b_d['accural_daily'] = b_d.values[:, 0] - b_d.values[:, 1]
     print('get daily ep')
     accural_monthly = daily2monthly(b_d['accural_daily'].reset_index().set_index('index'))
+    del b_d
     # TODO 这里的accural需不需要用总资产或者市值做一下横截面的标准化？
     accural_monthly.columns = ['accural_monthly']
     accural_monthly.to_csv(factor_path + '/accural.csv')
@@ -341,16 +345,18 @@ def get_accruals_1():
 #       1. 12month 换手率：过去250日换手率平均值（换手率 = 交易量/发行在外股份数， 发行在外股份数 = 净利润/基本每股收益）
 #       2. extra_turnover_20d: 过去20日平均换手率 / 过去250日平均换手率
 def get_turnover(factor):
-    select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` <= 602010 and code != 0'
-    select_sql_shares = 'SELECT `date`, `code`, `B002000000`/`B003000000` ' \
-                        'FROM `report_profit_daily` WHERE `code` >= 602010 and code != 0'
-    # select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` != 0'
+    # select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` >= 602010 and code != 0'
     # select_sql_shares = 'SELECT `date`, `code`, `B002000000`/`B003000000` ' \
-    #                     'FROM `report_profit_daily` WHERE `code` != 0'
+    #                     'FROM `report_profit_daily` WHERE `code` >= 602010 and code != 0'
+    select_sql_volume = 'SELECT `date`, `code`, `volume` FROM `market_rt_daily` WHERE `code` != 0'
+    select_sql_shares = 'SELECT `date`, `code`, `B002000000`/`B003000000` ' \
+                        'FROM `report_profit_daily` WHERE `code` != 0'
     volume = select_data(select_sql_volume).reset_index().set_index(['date', 'code']).iloc[:, 1:]
     shares = select_data(select_sql_shares).reset_index().set_index(['date', 'code']).iloc[:, 1:]
     print('get volume and shares')
     v_s = pd.merge(volume, shares, left_index=True, right_index=True, how='outer')
+    del volume
+    del shares
     v_s['turnover_daily'] = v_s.values[:, 0] / v_s.values[:, 1]
     print('get daily to')
     turnover_12m = rolling_func(250, v_s.reset_index().set_index('date')[['code', 'turnover_daily']],
@@ -367,7 +373,9 @@ def get_turnover(factor):
                                 np.mean, 'turnover_daily', 'turnover_20d_mean')
         turnover_20d['extra_to_daily'] = turnover_20d['turnover_20d_mean'].values\
                                          / turnover_12m['turnover_12m_mean'].values
+        del turnover_12m
         extra_to_monthly = daily2monthly(turnover_20d[['code', 'extra_to_daily']])
+        del turnover_20d
         extra_to_monthly.columns = ['extra_to_monthly']
         extra_to_monthly.to_csv(factor_path + '/to_extra_20d.csv')
         print('get monthly to_extra_20d, saved at', factor_path + '/to_extra_20d.csv')
@@ -377,5 +385,6 @@ def get_turnover(factor):
 if __name__ == '__main__':
     factor_path = config.get('PATH', 'data_pt') + '/factors'
     # get_bs_related('all')
+    # get_accruals_1()
     get_turnover('extra_to_20d')
-    get_accruals_1()
+

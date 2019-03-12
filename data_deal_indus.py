@@ -24,16 +24,8 @@ time_indus = pd.pivot_table(indus, values='indus_1st', index=indus.index, column
 time_indus.index = [date(i.year, i.month, 1) for i in time_indus.index]
 
 time_indus = fullfill_monthly(2005, 2018, time_indus)
-final_indus_code = list(time_indus.values.reshape(-1, 1).T)
-all_code = []
-all_date = []
-for i in time_indus.columns:
-    # time_indus[i][~np.isnan(time_indus[i])].values
-    all_code += [i] * len(time_indus)
-    all_date += list(time_indus.index)
 
-final_indus_code = pd.DataFrame([all_code, final_indus_code], index=['code', 'indus'], columns=all_date).T
-final_indus_code.to_csv(data_pt + '/factors/indus.csv', encoding='utf8')
+time_indus.to_csv(data_pt + '/factors/indus.csv', encoding='utf8')
 
 with open(data_pt + '/factors/indus_dir.txt', 'w') as f:
     for k in indus_dir:

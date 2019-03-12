@@ -64,17 +64,22 @@ macro_all = pd.DataFrame(np.concatenate([cpi.values, mean_rt.values, mean_sec_re
 macro_all.to_csv(macro_pt + '/macro_all.csv')
 
 # 用无风险利率处理月度收益率，获得超额收益
-select_sql_monthly = 'SELECT `date`, `code`, `rt` FROM `market_rt_monthly`' \
+select_sql_monthly = 'SELECT `date`, `code`, `rt`, `trd_day_nums` FROM `market_rt_monthly`' \
                      ' WHERE `code` != 0'
 monthly_rt = select_data(select_sql_monthly).reset_index().set_index('date').iloc[:, 1:]
+monthly_rt = monthly_rt[monthly_rt['trd_day_nums'] >= 15]
+monthly_rt = monthly_rt.iloc[:, :2]
+# 在这里过滤交易天数，月交易日不足15天的都将被过滤掉
+
 monthly_rt.index = [date(i.year, i.month, 1) for i in monthly_rt.index]
 monthly_rt_pivoted = pd.pivot_table(monthly_rt, values='rt', index=monthly_rt.index, columns='code')
-assert len(monthly_rt_pivoted) == 168
+monthly_rt_pivoted_filled = fullfill_monthly(2005, 2018, monthly_rt_pivoted)
+assert len(monthly_rt_pivoted_filled) == 168
 rf = pd.read_csv(macro_pt + '/rf.csv', index_col=0, parse_dates=True)
 rf.index = [i.date() for i in rf.index]
 rf_monthly = daily2monthly(rf/100, group_c='year_month').iloc[:, -1]
 assert len(rf_monthly) == 168
-rte_monthly = monthly_rt_pivoted - np.array([rf_monthly.values] * 3600).T
+rte_monthly = monthly_rt_pivoted_filled - np.array([rf_monthly.values] * 3598).T
 rte_monthly.to_csv(config.get('PATH', 'data_pt') + '/y.csv')
 
 
