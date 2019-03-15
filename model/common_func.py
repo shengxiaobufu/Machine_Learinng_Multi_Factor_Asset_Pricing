@@ -4,7 +4,16 @@ import math
 from datetime import date
 from sklearn.preprocessing import scale
 import pandas as pd
+import logging
+from config import config
 
+model_log_pt = config.get('PATH', 'log_pt') + '/model.log'
+
+logging.basicConfig(filename=model_log_pt,
+                    format='%(asctime)s-%(levelname)s:%(message)s',
+                    level=logging.INFO,
+                    filemode='a',
+                    datefmt="%Y-%m-%d %H:%M:%S")
 
 def r2_oos(true, pred):
     """
@@ -40,10 +49,11 @@ def give_rolling_set(X, y, train_len=4, cv_len=1, test_len=1, method='rolling', 
             cv_end = train_end + cv_len
             test_end = cv_end + test_len
             train_start = year_all[0]
-
-        # print('train:', year_all[0], train_end-1)
-        # print('cv:', train_end, cv_end-1)
-        # print('test:', cv_end, test_end-1)
+        msg = 'Train: ' + str(train_start) + ' to ' + str(train_end-1) \
+              + '. CV: ' + str(train_end) + ' to ' + str(cv_end-1) \
+              + '. Test: ' + str(cv_end) + ' to ' + str(test_end-1)
+        print(msg)
+        logging.info(msg)
 
         train_X = scale_from_all_his(X, train_start, train_end, allow_nan=allow_nan)
         train_y = y[(y.index.year >= train_start) * (y.index.year < train_end)]
@@ -53,7 +63,6 @@ def give_rolling_set(X, y, train_len=4, cv_len=1, test_len=1, method='rolling', 
         test_y = y[(y.index.year >= cv_end) * (y.index.year < test_end)]
 
         yield train_X, train_y, cv_X, cv_y, test_X, test_y
-
 
 
 def add_month_single(date_):

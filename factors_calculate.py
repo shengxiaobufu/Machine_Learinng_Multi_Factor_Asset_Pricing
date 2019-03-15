@@ -195,6 +195,7 @@ def get_value(factor='eq'):
 
 # 3. Profitability: ROE(净利润/所有者权益总计)
 def get_profitability():
+    # TODO ROE可能也有问题，应该用滚动四季报的结果，可能要重新处理利润表
     select_sql_earnings = 'SELECT `date`, `code`, `B002000000` FROM `report_profit_daily` WHERE `code` != 0'
     select_sql_equity = 'SELECT `date`, `code`, `A003000000` FROM `report_bs_daily` WHERE `code` != 0'
     print('Start calculate profitability')
@@ -271,6 +272,57 @@ def get_price_volume_related(factor):
     return
 
 
+def get_price_volume_related_60(factor):
+    # select_sql_rt_volume = 'SELECT `date`, `code`, `rt`, `volume` FROM `market_rt_daily` ' \
+    #                        'WHERE `code` <= 10 and code != 0'    # demo data
+    select_sql_rt_volume = 'SELECT `date`, `code`, `rt`, `volume` FROM `market_rt_daily` WHERE `code` != 0'
+    rt_vol = select_data(select_sql_rt_volume).reset_index().set_index(['date', 'code']).iloc[:, 1:]
+    print('get rt and volume')
+    # print(rt_vol.columns)
+
+    if factor in ['vol_rolling', 'all']:
+        vol_rolling_daily = rolling_func(60, rt_vol.reset_index().set_index('date'),
+                                         np.std, 'rt', 'vol_rolling_20_daily')
+        print('get vol daily')
+        vol_rolling_monthly = daily2monthly(vol_rolling_daily)
+        vol_rolling_monthly.columns = ['vol_rolling_20_monthly']
+        vol_rolling_monthly.to_csv(factor_path + '/vol_rolling_20.csv')
+        print('get monthly vol, saved at', factor_path + '/vol_rolling_20.csv')
+        del vol_rolling_daily
+        del vol_rolling_monthly
+
+    if factor in ['max', 'all']:
+        max_rt_20_daily = rolling_func(60, rt_vol.reset_index().set_index('date'),
+                                       np.max, 'rt', 'max_rt_20_daily')
+        print('get max daily')
+        max_rt_20_monthly = daily2monthly(max_rt_20_daily)
+        max_rt_20_monthly.columns = ['max_rt_20_monthly']
+        max_rt_20_monthly.to_csv(factor_path + '/max_rt_20.csv')
+        print('get monthly max, saved at', factor_path + '/max_rt_20.csv')
+        del max_rt_20_daily
+        del max_rt_20_monthly
+
+    if factor in ['Reversal', 'all']:
+        cumul_rt_data = rt_vol.reset_index().set_index('date')[['code', 'rt']]
+        cumul_rt_data['rt'] += 1
+        cumul_rt_60_daily = rolling_func(60, cumul_rt_data, np.prod, 'rt', 'cumul_rt_20_daily') - 1
+        # 这里要减一！
+        print('get Reversal 60 daily')
+        cumul_rt_60_monthly = daily2monthly(cumul_rt_60_daily)
+        cumul_rt_60_monthly.columns = ['cumul_rt_60_monthly']
+        cumul_rt_60_monthly.to_csv(factor_path + '/cumul_rt_60.csv')
+        print('get monthly reversal, saved at', factor_path + '/cumul_rt_60.csv')
+        del cumul_rt_60_daily
+        del cumul_rt_60_monthly
+        cumul_rt_120_daily = rolling_func(120, cumul_rt_data, np.prod, 'rt', 'cumul_rt_20_daily') - 1
+        print('get Reversal 120 daily')
+        cumul_rt_120_monthly = daily2monthly(cumul_rt_120_daily)
+        cumul_rt_120_monthly.columns = ['cumul_rt_120_monthly']
+        cumul_rt_120_monthly.to_csv(factor_path + '/cumul_rt_120.csv')
+        print('get monthly reversal, saved at', factor_path + '/cumul_rt_120.csv')
+    return
+
+
 # 纯财报相关
 # 5. Investment：asset_t / asset_t_last_year - 1     去年同一时点的总资产
 # 6. Accruals: 应计收入/净营运资产比率
@@ -315,6 +367,7 @@ def get_accruals_1():
                     '`A001100000` - `A001101000` - `A002100000` - `A002101000` - `A002113000` ' \
                     'as `cl_minus_std_tp` ' \
                     'FROM `report_bs_daily` WHERE `code` != 0'
+    # TODO accural因子这里可能有问题，因为cf应该用整年的，而不是季报的，应该滚动过去四季报进行累加
     select_sql_cf = 'SELECT `date`, `code`, `D000103000` + `D000104000` + `D000105000` as dep ' \
                     'FROM `report_cf_indirect_daily` WHERE `code` != 0'
     bs_related = select_data(select_sql_bs).reset_index().set_index('date').iloc[:, 1:]
@@ -361,6 +414,12 @@ def get_turnover(factor):
     print('get daily to')
     turnover_12m = rolling_func(250, v_s.reset_index().set_index('date')[['code', 'turnover_daily']],
                                 np.mean, 'turnover_daily', 'turnover_12m_mean')
+    if factor in ['to_daily_mean', 'all']:
+        turnover_dm_monthly = daily2monthly(v_s['turnover_daily'])
+        turnover_dm_monthly.columns = ['turnover_daily_mean_monthly']
+        turnover_dm_monthly.to_csv(factor_path + '/to_daily_mean.csv')
+        print('get monthly to_dm, saved at', factor_path + '/to_daily_mean.csv')
+        del turnover_dm_monthly
     if factor in ['to_12m', 'all']:
         print('get to_12m daily')
         turnover_12m_monthly = daily2monthly(turnover_12m)
@@ -386,5 +445,6 @@ if __name__ == '__main__':
     factor_path = config.get('PATH', 'data_pt') + '/factors'
     # get_bs_related('all')
     # get_accruals_1()
-    get_turnover('extra_to_20d')
+    get_price_volume_related_60('all')
+    get_turnover('to_daily_mean')
 

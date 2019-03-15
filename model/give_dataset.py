@@ -4,13 +4,27 @@ sys.path.append("..")
 
 from config import config
 import pandas as pd
-from sklearn.preprocessing import scale, OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
+import logging
 
+model_log_pt = config.get('PATH', 'log_pt') + '/model.log'
+
+logging.basicConfig(filename=model_log_pt,
+                    format='%(asctime)s-%(levelname)s:%(message)s',
+                    level=logging.INFO,
+                    filemode='a',
+                    datefmt="%Y-%m-%d %H:%M:%S")
+
+#################################### 参数设置 #######################################
 data_pt = config.get('PATH', 'data_pt')
+print("Now we are use", data_pt + '/data_all.csv')
+logging.info("Now we are use " + data_pt + '/data_all.csv')
 data_all = pd.read_csv(data_pt + '/data_all.csv', index_col=0, parse_dates=True)
+####################################################################################
+
 data_all.columns = ['code'] + list(data_all.columns)[1:]
 y = data_all['rte']
 
@@ -57,5 +71,7 @@ assert factor_scaled.shape[0] == y.shape[0]
 
 X = pd.DataFrame(np.concatenate([factor_scaled, f_x_m_all, indus], axis=1),
                  index=data_all.index, columns=factor_col + names + indus_code)
+print(X.shape)
+print(y.shape)
 
 
