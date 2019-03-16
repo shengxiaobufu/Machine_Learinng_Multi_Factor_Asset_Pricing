@@ -31,13 +31,13 @@ from give_dataset import X, y
 logging.info(' ')
 
 # boosting params
-num_trees = (np.arange(8) + 1) * 20 + 30
+num_trees = (np.arange(7) + 1) * 20 + 60
 learning_rate = [0.001, 0.01, 0.03, 0.05, 0.1]
 subsample = [0.5, 0.6, 0.7, 0.8]
 loss = ['ls', 'huber']
 
 # cart tree params
-max_depth = [2, 3, 4, 5, 6]
+max_depth = [2, 3, 4]
 
 params = []
 for t in num_trees:
